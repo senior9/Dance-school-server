@@ -1,12 +1,13 @@
 require('dotenv').config();
 const express =require('express');
+var jwt = require('jsonwebtoken');
 
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port =  process.env.PORT || 5000;
 const  cors = require('cors');
 
-
+// var web = "ad9237eb189f001c5cd84befca155ceac6fd3385e8ad879da8f30b07c51a25c3593582dcb263577365b6f41047a2c21471375c9f35f2d6856289b5718d344d0a";
 // Middleware
 
 app.use(cors());
@@ -20,9 +21,10 @@ app.get("/", (req,res)=>{
 
 
 
-const uri = `mongodb+srv://dance-collection:mOXXcjwRsaemJtTj@cluster0.rgmq1mr.mongodb.net/?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_NAME}:${process.env.DB_PASSWORD}@cluster0.rgmq1mr.mongodb.net/?retryWrites=true&w=majority`;
 console.log("DB_NAME:", process.env.DB_NAME);
 console.log("DB_PASSWORD:", process.env.DB_PASSWORD);
+console.log("DB_PASSWORD:", process.env.ACCESS_TOKEN);
 
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -42,7 +44,12 @@ async function run() {
     const classCollection = client.db("danceCollection").collection("classCollection");
     const cartCollection = client.db("danceCollection").collection("carts");
 
-
+// JWT 
+app.post('/jwt',(req,res)=>{
+  const user = req.body ;
+  const token = jwt.sign(user,env.process.ACCESS_TOKEN,{expiresIn:'1h'})
+  res.send(token)
+})
 
   // Create User 
 app.get('/users',async(req,res)=>{
@@ -63,18 +70,27 @@ app.get('/users',async(req,res)=>{
     res.send(result);
   })
 
-  app.patch('/users/admin:id', async(req,res)=>{
-    const id = req.params.id;
-    const filter = {_id : new ObjectId(id) } ;
-    const updatedDoc ={
-      $set:{
-        role:"admin"
+  app.patch('/users/admin/:id', async (req, res) => {
+    try {
+      const id = req.params.id;
+      if (!id) {
+        throw new Error('Invalid ID');
       }
+  
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "admin"
+        }
+      };
+  
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    } catch (error) {
+      res.status(400).send({ error: error.message });
     }
-    const result = await userCollection.updateOne( filter,updatedDoc);
-    res.send(result)
-  })
-
+  });
+  
 // class ccollection
       app.get('/classCollection',async(req,res)=>{
         const result = await classCollection.find().toArray();
