@@ -7,32 +7,30 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port =  process.env.PORT || 5000;
 const  cors = require('cors');
 
+// verfy JWT 
+
+// const verifyJsonWebTokens = (req, res, next) => {
+//   const isAuthorized = req.headers.authorization;
+//   if (!isAuthorized) {
+//     return res.status(401).send({ error: true, message: "Invalid authorization" });
+//   }
+//   const token = isAuthorized.split(" ")[1];
+//   jwt.verify(token, process.env.ACCESS_TOKEN, (error, decoded) => {
+//     if (error) {
+//       res.status(error).send({ error: true, message: "Invalid unauthorization" });
+//     }
+//     req.decoded = decoded;
+//     next();
+//   });
+// };
+
+
+
 // var web = "ad9237eb189f001c5cd84befca155ceac6fd3385e8ad879da8f30b07c51a25c3593582dcb263577365b6f41047a2c21471375c9f35f2d6856289b5718d344d0a";
 // Middleware
+
 app.use(cors());
 app.use(express.json());
-
-// stripe 
-const stripe = require("stripe")(process.env.PAYMENT_SECRECT_KEY);
-
-// VerifyJWT 
-
-const verifyJsonWebToken = (req, res, next) => {
-  const authorization = req.headers.authorization;
-  if (!authorization) {
-    return res.status(401).send({ error: true, message: 'unauthorized access' });
-  }
-  // bearer token
-  const token = authorization.split(' ')[1];
-
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({ error: true, message: 'unauthorized access' })
-    }
-    req.decoded = decoded;
-    next();
-  })
-}
 
 
 app.get("/", (req,res)=>{
@@ -46,7 +44,6 @@ const uri = `mongodb+srv://${process.env.DB_NAME}:${process.env.DB_PASSWORD}@clu
 console.log("DB_NAME:", process.env.DB_NAME);
 console.log("DB_PASSWORD:", process.env.DB_PASSWORD);
 console.log("DB_PASSWORD:", process.env.ACCESS_TOKEN);
-console.log("DB_PASSWORD:", process.env.PAYMENT_SECRECT_KEY);
 
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -70,7 +67,7 @@ async function run() {
 app.post('/jwt',(req,res)=>{
   const user = req.body ;
   const token = jwt.sign(user,process.env.ACCESS_TOKEN,{expiresIn:'1h'})
-  res.send(token)
+  res.send({token})
 })
 
   // Create User 
@@ -80,7 +77,7 @@ app.get('/users',async(req,res)=>{
 })
 
 
-
+// all User Post 
   app.post('/users',async(req,res)=>{
     const user = req.body;
     const query = {email:user.email};
@@ -92,34 +89,8 @@ app.get('/users',async(req,res)=>{
     res.send(result);
   })
 
-
-// Admin MiddleWare 
- const verifyAdmin = async(req,res,next)=>{
-  const email = req.decoded.email;
-  const query ={email: email}
-  const user =await userCollection.findOne(query);
-  if(user?.role !=='admin'){
-    res.status(403).send({ error: error.message });
-  }
-  next();
- }
-// Instructor  MiddleWare 
- const verifyInstructor = async(req,res,next)=>{
-  const email = req.decoded.email;
-  const query ={email: email}
-  const user =await userCollection.findOne(query);
-  if(user?.role !=='instructor'){
-    res.status(403).send({ error: error.message });
-  }
-  next();
- }
-
-//   Admin ROle get Method 
-
-
-
-// Admin Role Get Method
-app.get('/users/admin/:email', async (req, res) => {
+  // Admin Role Get Method
+  app.get('/users/admin/:email', async (req, res) => {
     const email = req.params.email;
     // const decodedEmail = req.decoded.email;
   
@@ -138,7 +109,8 @@ app.get('/users/admin/:email', async (req, res) => {
     }
   });
 
-//   Admin update 
+
+  // Update Admin Role 
   app.patch('/users/admin/:id', async (req, res) => {
     try {
       const id = req.params.id;
@@ -159,83 +131,42 @@ app.get('/users/admin/:email', async (req, res) => {
       res.status(400).send({ error: error.message });
     }
   });
-
-
-  // Instructor Role 
-// Instructor Role Get Method
-
-  app.get('/users/instructor/:email', async (req, res) => {
-    const email = req.params.email;
-    // const decodedEmail = req.decoded.email;
-  
-    // if (email !== decodedEmail) {
-    //   res.send({ admin: false });
-    //   return; // Add an early return here to prevent further execution
-    // }
-  
-    const query = { email: email };
-    const user = await userCollection.findOne(query);
-  
-    if (user && user.role === 'instructor') {
-      res.send({ instructor: true });
-    } else {
-      res.send({ instructor: false });
-    }
-  });
-  
-  // Instructor Update
-
-  app.patch('/users/instructor/:id', async (req, res) => {
-    try {
-      const id = req.params.id;
-      if (!id) {
-        throw new Error('Invalid ID');
-      }
-  
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          role: "instructor"
-        }
-      };
-  
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
-    } catch (error) {
-      res.status(400).send({ error: error.message });
-    }
-  });
-
   
 // class ccollection
       app.get('/classCollection',async(req,res)=>{
-        const { status } = req.query;
-        const query = status ? { status } : { status: { $ne: 'pending' } };
-        const result = await classCollection.find(query).toArray();
-        res.send(result);
-      })
-
-      app.post('/classCollection',async(req,res)=>{
-        const newClassCollection = req.body;
-        const result = await classCollection.insertOne(newClassCollection);
-        res.send(result)
-      })
-      // Delete method 
-      app.delete('/classCollection/:id', async(req,res)=>{
-        const id = req.params.id
-        const query = {_id: new ObjectId(id)}
-        const result = await classCollection.deleteOne(query);
+        const result = await classCollection.find().toArray();
         res.send(result);
       })
 
       // get cart 
-      app.get('/carts',async(req,res)=>{
+      
+
+      // app.get('/carts', async (req, res) => {
+      //   const email = req.query.email;
+      //   // if (!email) {
+      //   //   res.send([]);
+      //   //   return; // Add an early return here to prevent further execution
+      //   // }
+      
+      //   // const decodedEmail = req.decoded.email;
+      //   // if (email !== decodedEmail) {
+      //   //   res.status(403).send({ error: true, message: 'Access Denied' });
+      //   //   return; // Add an early return here to prevent further execution
+      //   // }
+      
+      //   const query = { email: email };
+      //   const result = await cartCollection.find(query).toArray();
+      //   res.send(result);
+      // });
+      
+       // get cart 
+       app.get('/carts',async(req,res)=>{
         const email = req.query.email;
         if(!email){
           res.send([]);
         }
         const query = {email: email}
-        const result = await cartCollection.find().toArray();
+        const result = await cartCollection.find(query).toArray();
         res.send(result);
       })
       // cart collections 
@@ -251,26 +182,6 @@ app.get('/users/admin/:email', async (req, res) => {
         const result = await cartCollection.deleteOne(query);
         res.send(result);
         })
-
-
-    // craete payment method 
-
-    app.post("/create-payment-intent", async (req, res) => {
-
-      const {price}=req.body;
-      const amout = price*100;
-
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: calculateOrderAmount(amout),
-        currency: "usd",
-        payment_methods_types:['card']
-      });
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
-
-    })
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
