@@ -63,7 +63,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     const userCollection = client.db("danceCollection").collection("users");
-    const classCollection = client.db("danceCollection").collection("classCollection");
+    const classCollections = client.db("danceCollection").collection("classCollection");
     const cartCollection = client.db("danceCollection").collection("carts");
 
 // JWT 
@@ -209,22 +209,27 @@ app.get('/users/admin/:email', async (req, res) => {
   
 // class ccollection
       app.get('/classCollection',async(req,res)=>{
-        const { status } = req.query;
-        const query = status ? { status } : { status: { $ne: 'pending' } };
-        const result = await classCollection.find(query).toArray();
+        const email = req.query.email;
+        const query ={email:email};
+
+        // const { status } = req.query;
+        // const query = status ? { status } : { status: { $ne: 'pending' } };
+        const result = await classCollections.find(query).toArray();
         res.send(result);
       })
 
+    // classCollecton Insert method 
       app.post('/classCollection',async(req,res)=>{
+
         const newClassCollection = req.body;
-        const result = await classCollection.insertOne(newClassCollection);
+        const result = await classCollections.insertOne(newClassCollection);
         res.send(result)
       })
       // Delete method 
       app.delete('/classCollection/:id', async(req,res)=>{
         const id = req.params.id
         const query = {_id: new ObjectId(id)}
-        const result = await classCollection.deleteOne(query);
+        const result = await classCollections.deleteOne(query);
         res.send(result);
       })
 
@@ -235,15 +240,18 @@ app.get('/users/admin/:email', async (req, res) => {
           res.send([]);
         }
         const query = {email: email}
-        const result = await cartCollection.find().toArray();
+        const result = await cartCollection.find(query).toArray();
         res.send(result);
       })
-      // cart collections 
-      app.post('/carts',async(req,res)=>{
-        const cartItem = req.body;
-        const result= await cartCollection.insertOne(cartItem);
-        res.send(result);
-      })
+     // cart collections
+app.post('/carts', async (req, res) => {
+  const email = req.query.email;
+  const cartItem = { ...req.body, email: email };
+  const result = await cartCollection.insertOne(cartItem);
+  res.send(result);
+});
+
+
       // delete method 
       app.delete('/carts/:id',async(req,res)=>{
         const id = req.params.id;
@@ -255,22 +263,34 @@ app.get('/users/admin/:email', async (req, res) => {
 
     // craete payment method 
 
-    app.post("/create-payment-intent", async (req, res) => {
+    app.post("/create-payment-intent",verifyJsonWebToken, async (req, res) => {
 
       const {price}=req.body;
-      const amout = price*100;
+      const amount = price*100;
 
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: calculateOrderAmount(amout),
+        amount: amount,
         currency: "usd",
-        payment_methods_types:['card']
+        payment_method_types:['card']
+        
       });
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
+      // const confirmation = await stripe.paymentIntents.confirm(paymentIntent.id);
+      // res.send({
+      //   clientSecret: paymentIntent.client_secret,
+      // });
 
     })
+
+    // Popular class Section get 
+
+    // Get popular classes
+app.get('/popular-classes', async (req, res) => {
+  const limit = req.query.limit || 6; // Set a default limit if not provided
+  const result = await classCollections.find().sort({ students: -1 }).limit(parseInt(limit)).toArray();
+  res.send(result);
+});
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
