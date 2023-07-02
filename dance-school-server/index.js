@@ -7,7 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port =  process.env.PORT || 5000;
 const  cors = require('cors');
 
-// var web = "ad9237eb189f001c5cd84befca155ceac6fd3385e8ad879da8f30b07c51a25c3593582dcb263577365b6f41047a2c21471375c9f35f2d6856289b5718d344d0a";
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -43,10 +43,7 @@ app.get("/", (req,res)=>{
 
 
 const uri = `mongodb+srv://${process.env.DB_NAME}:${process.env.DB_PASSWORD}@cluster0.rgmq1mr.mongodb.net/?retryWrites=true&w=majority`;
-console.log("DB_NAME:", process.env.DB_NAME);
-console.log("DB_PASSWORD:", process.env.DB_PASSWORD);
-console.log("DB_PASSWORD:", process.env.ACCESS_TOKEN);
-console.log("DB_PASSWORD:", process.env.PAYMENT_SECRECT_KEY);
+
 
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
